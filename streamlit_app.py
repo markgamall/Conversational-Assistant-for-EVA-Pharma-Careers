@@ -1,7 +1,17 @@
 import streamlit as st
-import requests
-import json
+import sys
+import os
 from dotenv import load_dotenv
+
+# Add the current directory to Python path to import from main.py
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# Import the agent directly from main.py
+try:
+    from main import agent, prettify_text_for_postman
+except ImportError as e:
+    st.error(f"Error importing from main.py: {str(e)}")
+    st.stop()
 
 load_dotenv()
 
@@ -16,8 +26,6 @@ st.write(
     "Welcome to EVA Pharma's intelligent career assistant! I can help you explore job opportunities, "
     "compare positions, and find the perfect role for your career journey."
 )
-
-API_ENDPOINT = "http://localhost:5000/query"
 
 def create_tts_button(text: str, key: str):
     """Create a TTS button using browser's Web Speech API with play/stop toggle"""
@@ -136,26 +144,60 @@ with col3:
 
 
 def get_chatbot_response(query):
+    """
+    Directly call the agent logic instead of making HTTP requests
+    """
     try:
-        response = requests.post(
-            API_ENDPOINT,
-            json={"query": query},
-            headers={"Content-Type": "application/json"},
-            timeout=300
-        )
+        # Check if agent is available
+        if not agent:
+            return "❌ **Error**: Agent not initialized. Please check your environment variables."
         
-        if response.status_code == 200:
-            data = response.json()
-            return data.get("response", "Sorry, I couldn't generate a response.")
-        else:
-            return f"Error: {response.status_code} - {response.text}"
+        # Create the initial state similar to Flask app
+        initial_state = {
+            "messages": [{
+                "role": "user",
+                "content": query
+            }]
+        }
+        
+        # Configure the agent
+        config = {"configurable": {"thread_id": "streamlit_session"}}
+        
+        # Invoke the agent
+        result = agent.invoke(initial_state, config)
+        messages = result.get("messages", [])
+
+        # Extract the response similar to Flask app logic
+        if messages:
+            # First try to find assistant messages
+            for msg in reversed(messages):
+                if isinstance(msg, dict) and msg.get("role") == "assistant":
+                    content = msg.get("content", "")
+                    if content and content.strip():
+                        return content
             
-    except requests.exceptions.ConnectionError:
-        return "❌ **Connection Error**: Unable to connect to the chatbot service. Please make sure the Flask server is running on http://localhost:5000"
-    except requests.exceptions.Timeout:
-        return "⏰ **Timeout Error**: The request took too long. Please try again."
+            # Fallback to any non-user message
+            for msg in reversed(messages):
+                if isinstance(msg, dict):
+                    content = msg.get("content", "")
+                    if content and content.strip() and msg.get("role") != "user":
+                        return content
+        
+        return "Sorry, I couldn't generate a response. Please try again."
+        
     except Exception as e:
-        return f"❌ **Error**: {str(e)}"
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error in get_chatbot_response: {str(e)}")
+        print(f"Full traceback: {error_details}")
+        
+        # Check for common issues
+        if "GOOGLE_API_KEY" in str(e) or "API key" in str(e):
+            return "❌ **API Key Error**: Please make sure your GOOGLE_API_KEY is properly set in your environment variables."
+        elif "agents.langgraph_agent" in str(e):
+            return "❌ **Import Error**: Unable to load the agent. Please make sure all required files are present."
+        else:
+            return f"❌ **Error**: {str(e)}"
 
 
 st.subheader("Chat")
@@ -205,3 +247,4 @@ if user_message:
     
     if default_value:
         st.rerun()
+
