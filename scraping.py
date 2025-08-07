@@ -27,9 +27,75 @@ class EvaPharmaJobScraper:
         self.driver = webdriver.Chrome(options=chrome_options)
         self.wait = WebDriverWait(self.driver, 15) 
     
+    def remove_location_filter(self):
+        """Remove the default Egypt location filter"""
+        try:
+            print("Checking for location filters to remove...")
+            time.sleep(3)  # Wait for filters to load
+            
+            # Look for filter tags or chips that might contain "Egypt"
+            filter_selectors = [
+                '[data-ui="filter-chip"]',
+                '.filter-chip',
+                '.filter-tag',
+                '[class*="filter"]',
+                '[class*="chip"]',
+                '[class*="tag"]'
+            ]
+            
+            for selector in filter_selectors:
+                try:
+                    filter_elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                    for element in filter_elements:
+                        if "egypt" in element.text.lower():
+                            # Look for close button within the filter
+                            close_button = None
+                            try:
+                                close_button = element.find_element(By.CSS_SELECTOR, '[data-ui="close"], .close, [aria-label*="remove"], [aria-label*="close"]')
+                            except NoSuchElementException:
+                                # Try clicking the element itself if it's clickable
+                                close_button = element
+                            
+                            if close_button:
+                                self.driver.execute_script("arguments[0].click();", close_button)
+                                print("✓ Removed Egypt location filter")
+                                time.sleep(2)
+                                return True
+                except NoSuchElementException:
+                    continue
+            
+            # Alternative approach: look for clear filters button
+            clear_selectors = [
+                '[data-ui="clear-filters"]',
+                '.clear-filters',
+                'button[class*="clear"]',
+                'a[class*="clear"]'
+            ]
+            
+            for selector in clear_selectors:
+                try:
+                    clear_button = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if clear_button.is_displayed():
+                        self.driver.execute_script("arguments[0].click();", clear_button)
+                        print("✓ Cleared all filters")
+                        time.sleep(2)
+                        return True
+                except NoSuchElementException:
+                    continue
+            
+            print("No location filter found to remove")
+            return False
+            
+        except Exception as e:
+            print(f"Error removing location filter: {e}")
+            return False
+    
     def get_job_listings(self):
         print("Loading job listings page...")
         self.driver.get(self.base_url)
+        
+        # Remove location filter before proceeding
+        self.remove_location_filter()
         
         try:
             self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "[data-ui='job']")))
