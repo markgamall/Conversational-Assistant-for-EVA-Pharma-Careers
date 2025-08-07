@@ -65,7 +65,7 @@ st.write(
 )
 
 # Add a visual indicator of session freshness
-if 'session_start_time' in st.session_state:
+if 'session_start_time' in st.session_state and 'conversation_id' in st.session_state:
     with st.sidebar:
         st.write("**Session Info:**")
         st.write(f"Started: {st.session_state.session_start_time.strftime('%H:%M:%S')}")
