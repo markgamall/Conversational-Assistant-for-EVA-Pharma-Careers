@@ -55,12 +55,7 @@ Please provide a structured comparison with the following sections:
 Important: Make sure to address BOTH roles equally and provide specific, practical insights that would help someone make an informed career decision."""
     
     try:
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0
-            )
-        )
+        response = model.generate_content(prompt)
         return response.text
     except Exception as e:
         return f"Error comparing jobs: {str(e)}. Please try again or contact support if the issue persists."

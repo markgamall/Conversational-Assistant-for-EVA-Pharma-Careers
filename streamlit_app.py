@@ -2,6 +2,8 @@ import streamlit as st
 import sys
 import os
 from dotenv import load_dotenv
+import uuid
+from datetime import datetime
 
 # Add the current directory to Python path to import from main.py
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -21,11 +23,58 @@ st.set_page_config(
     layout="wide"
 )
 
+# OPTION 1: Always reset session state (most aggressive reset)
+def reset_session_state():
+    """Reset all session state variables"""
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+
+# OPTION 2: Reset only conversation-related state
+def reset_conversation():
+    """Reset only conversation-related session state"""
+    keys_to_reset = ['messages', 'conversation_id', 'agent_instance']
+    for key in keys_to_reset:
+        if key in st.session_state:
+            del st.session_state[key]
+
+# OPTION 3: Generate unique session ID for each visit
+def initialize_session():
+    """Initialize session with unique ID"""
+    if 'session_initialized' not in st.session_state:
+        st.session_state.session_initialized = True
+        st.session_state.conversation_id = str(uuid.uuid4())
+        st.session_state.session_start_time = datetime.now()
+        # Reset any existing messages
+        st.session_state.messages = []
+
+# Choose your preferred option by uncommenting one of these:
+
+# OPTION 1: Complete reset every time (uncomment next line)
+# reset_session_state()
+
+# OPTION 2: Reset only conversation (uncomment next line)
+# reset_conversation()
+
+# OPTION 3: Initialize with unique session (recommended - uncomment next line)
+initialize_session()
+
 st.title("EVA Pharma Career Assistant")
 st.write(
     "Welcome to EVA Pharma's intelligent career assistant! I can help you explore job opportunities, "
     "compare positions, and find the perfect role for your career journey."
 )
+
+# Add a visual indicator of session freshness
+if 'session_start_time' in st.session_state:
+    with st.sidebar:
+        st.write("**Session Info:**")
+        st.write(f"Started: {st.session_state.session_start_time.strftime('%H:%M:%S')}")
+        st.write(f"Session ID: {st.session_state.conversation_id[:8]}...")
+        
+        # Add manual reset button
+        if st.button("🔄 Start Fresh Conversation"):
+            reset_conversation()
+            st.rerun()
 
 def create_tts_button(text: str, key: str):
     """Create a TTS button using browser's Web Speech API with play/stop toggle"""
@@ -97,7 +146,8 @@ def create_tts_button(text: str, key: str):
     
     return js_code
 
-if "messages" not in st.session_state:
+# Initialize messages with welcome message if not present
+if "messages" not in st.session_state or len(st.session_state.messages) == 0:
     st.session_state.messages = []
     welcome_message = {
         "role": "assistant", 
@@ -136,6 +186,7 @@ with col2:
         st.session_state.selected_message = predefined_messages[2]
     if st.button("🏡 Remote Jobs"):
         st.session_state.selected_message = predefined_messages[3]
+        
 with col3:
     if st.button("🔄 Career Growth"):
         st.session_state.selected_message = predefined_messages[4]
@@ -145,7 +196,7 @@ with col3:
 
 def get_chatbot_response(query):
     """
-    Directly call the agent logic instead of making HTTP requests
+    Directly call the agent logic with unique session ID
     """
     try:
         # Check if agent is available
@@ -160,8 +211,9 @@ def get_chatbot_response(query):
             }]
         }
         
-        # Configure the agent
-        config = {"configurable": {"thread_id": "streamlit_session"}}
+        # Use unique session ID for each conversation
+        session_id = st.session_state.get('conversation_id', 'default_session')
+        config = {"configurable": {"thread_id": session_id}}
         
         # Invoke the agent
         result = agent.invoke(initial_state, config)
@@ -247,4 +299,3 @@ if user_message:
     
     if default_value:
         st.rerun()
-

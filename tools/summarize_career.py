@@ -24,12 +24,7 @@ Provide information about:
 Keep the response focused and actionable."""
     
     try:
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0
-            )
-        )
+        response = model.generate_content(prompt)
         return response.text
     except Exception as e:
         return f"Error summarizing career information: {str(e)}"
