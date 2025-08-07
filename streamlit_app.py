@@ -31,11 +31,16 @@ def reset_session_state():
 
 # OPTION 2: Reset only conversation-related state
 def reset_conversation():
-    """Reset only conversation-related session state"""
+    """Reset only conversation-related session state and reinitialize session"""
     keys_to_reset = ['messages', 'conversation_id', 'agent_instance']
     for key in keys_to_reset:
         if key in st.session_state:
             del st.session_state[key]
+    
+    # Reinitialize the session after reset
+    st.session_state.conversation_id = str(uuid.uuid4())
+    st.session_state.session_start_time = datetime.now()
+    st.session_state.messages = []
 
 # OPTION 3: Generate unique session ID for each visit
 def initialize_session():
