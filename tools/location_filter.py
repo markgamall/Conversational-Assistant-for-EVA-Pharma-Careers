@@ -24,7 +24,12 @@ If no exact matches, suggest similar locations or nearby areas.
 Format the response clearly with job titles as headers."""
     
     try:
-        response = model.generate_content(prompt)
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0
+            )
+        )
         return response.text
     except Exception as e:
         return f"Error filtering jobs by location: {str(e)}"
