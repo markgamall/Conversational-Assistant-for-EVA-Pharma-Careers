@@ -17,7 +17,7 @@ st.write(
     "compare positions, and find the perfect role for your career journey."
 )
 
-API_ENDPOINT = "http://127.0.0.1:5000/query" 
+API_ENDPOINT = "http://localhost:5000/query"
 
 def create_tts_button(text: str, key: str):
     """Create a TTS button using browser's Web Speech API with play/stop toggle"""
